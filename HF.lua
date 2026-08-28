@@ -27,7 +27,7 @@ local SellEvent = Events:FindFirstChild("SellAll")
                or (Events:FindFirstChild("Merchant") and Events.Merchant:FindFirstChild("SellAll"))
 
 local Window = Rayfield:CreateWindow({
-    Name = "Heavyweight Fishing | Auto Farm UI",
+    Name = "Heavyweight Fishing | by Nicha",
     LoadingTitle = "Loading Script...",
     LoadingSubtitle = "by Nicha",
     ConfigurationSaving = { Enabled = false },
