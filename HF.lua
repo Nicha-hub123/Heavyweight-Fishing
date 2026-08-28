@@ -70,12 +70,16 @@ TabSelling:AddToggle({
     Callback = function(Value) AutoSell = Value end    
 })
 
-TabSelling:AddSlider({
-    Name = "Auto Sell Interval",
-    Min = 1, Max = 60, Default = 5,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 1, ValueName = "วินาที",
-    Callback = function(Value) SellDelay = Value end    
+TabSelling:AddTextbox({
+    Name = "Auto Sell Interval (วินาที)",
+    Default = "5",
+    TextDisappear = false,
+    Callback = function(Value)
+        local num = tonumber(Value)
+        if num and num > 0 then
+            SellDelay = num
+        end
+    end
 })
 
 TabSelling:AddButton({
@@ -90,6 +94,8 @@ TabSelling:AddButton({
 })
 
 -- 4. แท็บ Teleport
+TabTeleport:AddSection({ Name = "📍 Islands (เกาะต่างๆ)" })
+
 local IslandsList = {
     {"Beginning Isle", Vector3.new(-200.686, 11.0587, 35.9142)},
     {"Bamboo Isle", Vector3.new(-1223, 7.28001, -24.1)},
@@ -120,7 +126,7 @@ end
 OrionLib:Init()
 
 -- ==========================================================
--- 📱 ปุ่มลอยสำหรับเปิด/ปิด UI (ถาวร ไม่หายไปตามเมนู)
+-- 📱 ปุ่มลอยสี่เหลี่ยมขอบมน (พื้นหลังดำ ตัวอักษร NC สีขาว)
 -- ==========================================================
 task.spawn(function()
     task.wait(0.5)
@@ -142,17 +148,18 @@ task.spawn(function()
 
     ToggleButton.Name = "ToggleButton"
     ToggleButton.Parent = ScreenGui
-    ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 180, 100)
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     ToggleButton.Position = UDim2.new(0.05, 0, 0.25, 0)
     ToggleButton.Size = UDim2.new(0, 55, 0, 55)
-    ToggleButton.Font = Enum.Font.SourceSansBold
-    ToggleButton.Text = "🎣"
+    
+    ToggleButton.Text = "NC"
     ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleButton.TextSize = 28
+    ToggleButton.TextSize = 22
+    ToggleButton.Font = Enum.Font.FredokaOne
     ToggleButton.Active = true
     ToggleButton.Draggable = true
 
-    UICorner.CornerRadius = UDim.new(1, 0)
+    UICorner.CornerRadius = UDim.new(0, 14)
     UICorner.Parent = ToggleButton
 
     ToggleButton.MouseButton1Click:Connect(function()
