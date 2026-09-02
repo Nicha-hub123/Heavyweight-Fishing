@@ -4,11 +4,14 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Variables Setup
 local AutoCast = false
 local AutoSpecificFish = false
+local Noclip = false
+local InfiniteJump = false
 
 -- 🐟 [รายชื่อปลาที่ต้องการตก - Updated List]
 local TargetFishList = {
@@ -58,6 +61,7 @@ local UIPath = LocalPlayer:WaitForChild("PlayerGui")
 local Events = ReplicatedStorage:WaitForChild("Events")
 local FishingEvent = Events:WaitForChild("Fishing")
 local ToggleHotbar = Events:FindFirstChild("ToggleHotbar")
+local DialogueEvent = Events:FindFirstChild("ChooseDialogueOption")
 
 local SkillEvent = Events:FindFirstChild("UseSkill") 
                 or Events:FindFirstChild("Skill") 
@@ -71,7 +75,7 @@ local SellEvent = Events:FindFirstChild("SellAll")
 
 -- Window Setup
 local Window = OrionLib:MakeWindow({
-    Name = "Heavyweight Fishing | by Nicha",
+    Name = "Heavyweight Fishing | Full Features",
     HidePremium = true,
     SaveConfig = false,
     ConfigFolder = "HeavyweightFishingConfig"
@@ -79,9 +83,11 @@ local Window = OrionLib:MakeWindow({
 
 -- UI Tabs
 local TabFishing = Window:MakeTab({ Name = "🎣 Auto Fishing", PremiumOnly = false })
+local TabBait = Window:MakeTab({ Name = "🛒 Bait & Craft", PremiumOnly = false })
 local TabSkills = Window:MakeTab({ Name = "⚡ Auto Skill", PremiumOnly = false })
 local TabSelling = Window:MakeTab({ Name = "💸 Selling", PremiumOnly = false })
 local TabTeleport = Window:MakeTab({ Name = "🏝️ Teleport", PremiumOnly = false })
+local TabMisc = Window:MakeTab({ Name = "🌀 Misc", PremiumOnly = false })
 
 -- 1. Tab Auto Fishing
 TabFishing:AddSection({ Name = "🔥 Main Fishing Settings" })
@@ -104,13 +110,33 @@ TabFishing:AddToggle({
     Callback = function(Value) AutoSpecificFish = Value end    
 })
 
--- 2. Tab Auto Skill
+-- 2. Tab Bait & Craft
+TabBait:AddSection({ Name = "🪱 Bait Menu" })
+TabBait:AddButton({
+    Name = "Open Bait Shop (เปิดร้านซื้อเหยื่อ)",
+    Callback = function()
+        if DialogueEvent then
+            DialogueEvent:FireServer("BuyBait", 1, "BaitShop")
+        end
+    end
+})
+
+TabBait:AddButton({
+    Name = "Open Craft Bait (เปิดหน้าต่างคราฟเหยื่อ)",
+    Callback = function()
+        if DialogueEvent then
+            DialogueEvent:FireServer("BuyBait", 2, "CraftBait")
+        end
+    end
+})
+
+-- 3. Tab Auto Skill
 TabSkills:AddToggle({ Name = "Auto Skill Z", Default = false, Callback = function(Value) SkillZ = Value end })
 TabSkills:AddToggle({ Name = "Auto Skill X", Default = false, Callback = function(Value) SkillX = Value end })
 TabSkills:AddToggle({ Name = "Auto Skill C", Default = false, Callback = function(Value) SkillC = Value end })
 TabSkills:AddToggle({ Name = "Auto Skill V", Default = false, Callback = function(Value) SkillV = Value end })
 
--- 3. Tab Selling
+-- 4. Tab Selling
 TabSelling:AddToggle({
     Name = "Auto Sell Fish",
     Default = false,
@@ -134,7 +160,7 @@ TabSelling:AddButton({
     end
 })
 
--- 4. Tab Teleport
+-- 5. Tab Teleport
 TabTeleport:AddSection({ Name = "📍 Islands (เกาะต่างๆ)" })
 local IslandsList = {
     {"Beginning Isle", Vector3.new(-200.686, 11.0587, 35.9142)},
@@ -159,6 +185,20 @@ for _, islandData in ipairs(IslandsList) do
         end
     })
 end
+
+-- 6. Tab Misc (แท็บระบบเสริมใหม่)
+TabMisc:AddSection({ Name = "⚙️ Player Utilities" })
+TabMisc:AddToggle({
+    Name = "Noclip (เดินทะลุกำแพง)",
+    Default = false,
+    Callback = function(Value) Noclip = Value end
+})
+
+TabMisc:AddToggle({
+    Name = "Infinite Jump (กระโดดไม่จำกัด)",
+    Default = false,
+    Callback = function(Value) InfiniteJump = Value end
+})
 
 OrionLib:Init()
 
@@ -211,17 +251,36 @@ task.spawn(function()
 end)
 
 -- ==========================================================
--- ⚙️ SYSTEM CORE & TOGGLE HOTBAR RESET LOGIC
+-- ⚙️ SYSTEM CORE, MISC LOGIC & TOGGLE HOTBAR RESET
 -- ==========================================================
+
+-- Noclip Logic
+RunService.Stepped:Connect(function()
+    if Noclip and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- Infinite Jump Logic
+UserInputService.JumpRequest:Connect(function()
+    if InfiniteJump and LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
 
 -- ฟังก์ชันกด ToggleHotbar ช่อง 1 จำนวน 2 ครั้งเพื่อรีเซ็ตมินิเกม
 local function resetMinigameWithHotbar()
     if ToggleHotbar then
         pcall(function()
-            -- กดครั้งที่ 1: เก็บเบ็ดเพื่อออกจากมินิเกม
             ToggleHotbar:InvokeServer("1")
             task.wait(0.12)
-            -- กดครั้งที่ 2: ควักเบ็ดกลับออกมาเตรียมเหวี่ยงต่อ
             ToggleHotbar:InvokeServer("1")
             task.wait(0.15)
         end)
