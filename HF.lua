@@ -71,7 +71,7 @@ local SellEvent = Events:FindFirstChild("SellAll")
 
 -- Window Setup
 local Window = OrionLib:MakeWindow({
-    Name = "Heavyweight Fishing | Updated Target Fish",
+    Name = "Heavyweight Fishing | by Nicha",
     HidePremium = true,
     SaveConfig = false,
     ConfigFolder = "HeavyweightFishingConfig"
