@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
 -- Variables Setup
@@ -75,7 +76,7 @@ local SellEvent = Events:FindFirstChild("SellAll")
 
 -- Window Setup
 local Window = OrionLib:MakeWindow({
-    Name = "Heavyweight Fishing | by Nicha",
+    Name = "Heavyweight Fishing | Full Features",
     HidePremium = true,
     SaveConfig = false,
     ConfigFolder = "HeavyweightFishingConfig"
@@ -161,6 +162,67 @@ TabSelling:AddButton({
 })
 
 -- 5. Tab Teleport
+TabTeleport:AddSection({ Name = "🧙 Special NPC" })
+TabTeleport:AddButton({
+    Name = "TP to Mysterious Merchant (พ่อค้าลึกลับ Maoshan)",
+    Callback = function()
+        local maoshan = Workspace:FindFirstChild("NPC") 
+                     and Workspace.NPC:FindFirstChild("Function") 
+                     and Workspace.NPC.Function:FindFirstChild("Maoshan")
+
+        if maoshan then
+            local targetCFrame = nil
+            if maoshan:IsA("Model") then
+                targetCFrame = maoshan:GetPrimaryPartCFrame() or (maoshan:FindFirstChild("HumanoidRootPart") and maoshan.HumanoidRootPart.CFrame)
+            elseif maoshan:IsA("BasePart") then
+                targetCFrame = maoshan.CFrame
+            end
+
+            if targetCFrame and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame * CFrame.new(0, 0, -3)
+            end
+        end
+    end
+})
+
+-- ฟังก์ชันดึง NPC Yellow God ทั้ง 3 จุด
+local function getYellowGodList()
+    local list = {}
+    local godFolder = Workspace:FindFirstChild("NPC") and Workspace.NPC:FindFirstChild("God")
+    if godFolder then
+        for _, obj in ipairs(godFolder:GetChildren()) do
+            if obj.Name == "Yellow" then
+                table.insert(list, obj)
+            end
+        end
+    end
+    return list
+end
+
+-- เพิ่มปุ่มวาร์ป Yellow God (3 จุด)
+for i = 1, 3 do
+    TabTeleport:AddButton({
+        Name = "TP to Yellow God (จุดที่ " .. i .. ")",
+        Callback = function()
+            local yellowList = getYellowGodList()
+            local targetGod = yellowList[i]
+
+            if targetGod then
+                local targetCFrame = nil
+                if targetGod:IsA("Model") then
+                    targetCFrame = targetGod:GetPrimaryPartCFrame() or (targetGod:FindFirstChild("HumanoidRootPart") and targetGod.HumanoidRootPart.CFrame) or (targetGod:FindFirstChildWhichIsA("BasePart") and targetGod:FindFirstChildWhichIsA("BasePart").CFrame)
+                elseif targetGod:IsA("BasePart") then
+                    targetCFrame = targetGod.CFrame
+                end
+
+                if targetCFrame and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame * CFrame.new(0, 0, -3)
+                end
+            end
+        end
+    })
+end
+
 TabTeleport:AddSection({ Name = "📍 Islands (เกาะต่างๆ)" })
 local IslandsList = {
     {"Beginning Isle", Vector3.new(-200.686, 11.0587, 35.9142)},
@@ -186,7 +248,7 @@ for _, islandData in ipairs(IslandsList) do
     })
 end
 
--- 6. Tab Misc (แท็บระบบเสริมใหม่)
+-- 6. Tab Misc
 TabMisc:AddSection({ Name = "⚙️ Player Utilities" })
 TabMisc:AddToggle({
     Name = "Noclip (เดินทะลุกำแพง)",
