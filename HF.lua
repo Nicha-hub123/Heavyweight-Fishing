@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
@@ -13,6 +14,7 @@ local AutoCast = false
 local AutoSpecificFish = false
 local Noclip = false
 local InfiniteJump = false
+local AntiAFK = true -- เปิดใช้งานเป็นค่าเริ่มต้น
 
 -- 🐟 [รายชื่อปลาที่ต้องการตก - Updated List]
 local TargetFishList = {
@@ -251,6 +253,12 @@ end
 -- 6. Tab Misc
 TabMisc:AddSection({ Name = "⚙️ Player Utilities" })
 TabMisc:AddToggle({
+    Name = "Anti AFK (กันหลุดออกจากเกม - Advanced)",
+    Default = true,
+    Callback = function(Value) AntiAFK = Value end
+})
+
+TabMisc:AddToggle({
     Name = "Noclip (เดินทะลุกำแพง)",
     Default = false,
     Callback = function(Value) Noclip = Value end
@@ -313,8 +321,40 @@ task.spawn(function()
 end)
 
 -- ==========================================================
--- ⚙️ SYSTEM CORE, MISC LOGIC & TOGGLE HOTBAR RESET
+-- ⚙️ ADVANCED ANTI-AFK & SYSTEM CORE
 -- ==========================================================
+
+-- 1. Roblox Engine Anti-AFK Hook
+LocalPlayer.Idled:Connect(function()
+    if AntiAFK then
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end
+end)
+
+-- 2. Micro-Movement & Keypress Loop (ป้องกันกรณี Anti-Cheat ในเกม)
+task.spawn(function()
+    while true do
+        task.wait(60) -- ทำงานทุกๆ 1 นาที
+        if AntiAFK then
+            pcall(function()
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    local hrp = char.HumanoidRootPart
+                    -- ขยับตัวไปข้างหน้าเล็กน้อยแล้วดึงกลับ (ไม่ส่งผลต่อตำแหน่งเดิม)
+                    hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, 0.05)
+                    task.wait(0.1)
+                    hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, -0.05)
+                end
+                
+                -- จำลองการกดปุ่ม Spacebar
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                task.wait(0.05)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            end)
+        end
+    end
+end)
 
 -- Noclip Logic
 RunService.Stepped:Connect(function()
