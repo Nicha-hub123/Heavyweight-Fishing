@@ -48,6 +48,7 @@ local TargetFishList = {
     "Frost Kingfish",
     "Frost Queenfish",
     "Verdant Alligator Gar",
+    "Dreadmare Eel",
     "Tigerfang Whale"
 }
 
