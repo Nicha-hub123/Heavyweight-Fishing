@@ -166,8 +166,6 @@ TabSelling:AddButton({
 })
 
 -- 5. Tab Teleport
-TabTeleport:AddSection({ Name = "🧙 Special NPC" })
-
 -- Helper Function สำหรับการ TP ไปยัง Instance
 local function teleportToTarget(targetObj)
     if not targetObj then return end
@@ -184,6 +182,8 @@ local function teleportToTarget(targetObj)
     end
 end
 
+TabTeleport:AddSection({ Name = "🧙 Secret NPCs (NPC ลับ)" })
+
 TabTeleport:AddButton({
     Name = "TP to Mysterious Merchant (Maoshan)",
     Callback = function()
@@ -195,7 +195,7 @@ TabTeleport:AddButton({
 })
 
 TabTeleport:AddButton({
-    Name = "TP to Taoist (NPC ลับ)",
+    Name = "TP to Taoist",
     Callback = function()
         local taoist = Workspace:FindFirstChild("NPC") 
                     and Workspace.NPC:FindFirstChild("Function") 
@@ -203,6 +203,36 @@ TabTeleport:AddButton({
         teleportToTarget(taoist)
     end
 })
+
+TabTeleport:AddSection({ Name = "📍 Functional NPCs (NPC ทั่วไป/เควส)" })
+
+local FunctionNPCs = {
+    {"Bac Minh", "Bac Minh"},
+    {"Giang Lao (Battlefield Isle)", "Battlefield Isle's Giang Lao"},
+    {"Blind Grand Angler", "Blind Grand Angler"},
+    {"Duan Gan", "Duan Gan"},
+    {"Dumb guy", "Dumb guy"},
+    {"Giang Lao", "Giang Lao"},
+    {"Ha Dieu De", "Ha Dieu De"},
+    {"Lao Ngo", "Lao Ngo"},
+    {"Nanjiang", "Nanjiang"},
+    {"Sage Yijiu", "Sage Yijiu"},
+    {"The Shadow", "The Shadow"},
+    {"Ticket Quest Giver", "Ticket Quest Giver"},
+    {"Zeng Tianguo", "Zeng Tianguo"}
+}
+
+for _, npcData in ipairs(FunctionNPCs) do
+    TabTeleport:AddButton({
+        Name = "TP to " .. npcData[1],
+        Callback = function()
+            local targetNPC = Workspace:FindFirstChild("NPC") 
+                           and Workspace.NPC:FindFirstChild("Function") 
+                           and Workspace.NPC.Function:FindFirstChild(npcData[2])
+            teleportToTarget(targetNPC)
+        end
+    })
+end
 
 TabTeleport:AddSection({ Name = "🗿 God Statues" })
 
@@ -544,3 +574,5 @@ task.spawn(function()
         end
     end
 end)
+
+
