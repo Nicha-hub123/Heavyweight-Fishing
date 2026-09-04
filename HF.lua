@@ -14,7 +14,7 @@ local AutoCast = false
 local AutoSpecificFish = false
 local Noclip = false
 local InfiniteJump = false
-local AntiAFK = true -- เปิดใช้งานเป็นค่าเริ่มต้น
+local AntiAFK = true
 
 -- 🐟 [รายชื่อปลาที่ต้องการตก - Updated List]
 local TargetFishList = {
@@ -165,65 +165,74 @@ TabSelling:AddButton({
 
 -- 5. Tab Teleport
 TabTeleport:AddSection({ Name = "🧙 Special NPC" })
+
+-- Helper Function สำหรับการ TP ไปยัง Instance
+local function teleportToTarget(targetObj)
+    if not targetObj then return end
+    local targetCFrame = nil
+
+    if targetObj:IsA("Model") then
+        targetCFrame = targetObj:GetPrimaryPartCFrame() or (targetObj:FindFirstChild("HumanoidRootPart") and targetObj.HumanoidRootPart.CFrame) or (targetObj:FindFirstChildWhichIsA("BasePart") and targetObj:FindFirstChildWhichIsA("BasePart").CFrame)
+    elseif targetObj:IsA("BasePart") then
+        targetCFrame = targetObj.CFrame
+    end
+
+    if targetCFrame and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame * CFrame.new(0, 0, -3)
+    end
+end
+
 TabTeleport:AddButton({
-    Name = "TP to Mysterious Merchant (พ่อค้าลึกลับ Maoshan)",
+    Name = "TP to Mysterious Merchant (Maoshan)",
     Callback = function()
         local maoshan = Workspace:FindFirstChild("NPC") 
                      and Workspace.NPC:FindFirstChild("Function") 
                      and Workspace.NPC.Function:FindFirstChild("Maoshan")
-
-        if maoshan then
-            local targetCFrame = nil
-            if maoshan:IsA("Model") then
-                targetCFrame = maoshan:GetPrimaryPartCFrame() or (maoshan:FindFirstChild("HumanoidRootPart") and maoshan.HumanoidRootPart.CFrame)
-            elseif maoshan:IsA("BasePart") then
-                targetCFrame = maoshan.CFrame
-            end
-
-            if targetCFrame and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame * CFrame.new(0, 0, -3)
-            end
-        end
+        teleportToTarget(maoshan)
     end
 })
 
--- ฟังก์ชันดึง NPC Yellow God ทั้ง 3 จุด
-local function getYellowGodList()
-    local list = {}
-    local godFolder = Workspace:FindFirstChild("NPC") and Workspace.NPC:FindFirstChild("God")
-    if godFolder then
-        for _, obj in ipairs(godFolder:GetChildren()) do
-            if obj.Name == "Yellow" then
-                table.insert(list, obj)
-            end
-        end
+TabTeleport:AddButton({
+    Name = "TP to Taoist (NPC ลับ)",
+    Callback = function()
+        local taoist = Workspace:FindFirstChild("NPC") 
+                    and Workspace.NPC:FindFirstChild("Function") 
+                    and Workspace.NPC.Function:FindFirstChild("Taoist")
+        teleportToTarget(taoist)
     end
-    return list
-end
+})
 
--- เพิ่มปุ่มวาร์ป Yellow God (3 จุด)
-for i = 1, 3 do
-    TabTeleport:AddButton({
-        Name = "TP to Yellow God (จุดที่ " .. i .. ")",
-        Callback = function()
-            local yellowList = getYellowGodList()
-            local targetGod = yellowList[i]
+TabTeleport:AddSection({ Name = "🗿 God Statues" })
 
-            if targetGod then
-                local targetCFrame = nil
-                if targetGod:IsA("Model") then
-                    targetCFrame = targetGod:GetPrimaryPartCFrame() or (targetGod:FindFirstChild("HumanoidRootPart") and targetGod.HumanoidRootPart.CFrame) or (targetGod:FindFirstChildWhichIsA("BasePart") and targetGod:FindFirstChildWhichIsA("BasePart").CFrame)
-                elseif targetGod:IsA("BasePart") then
-                    targetCFrame = targetGod.CFrame
-                end
+TabTeleport:AddButton({
+    Name = "TP to God Yellow",
+    Callback = function()
+        local godYellow = Workspace:FindFirstChild("NPC") 
+                       and Workspace.NPC:FindFirstChild("God") 
+                       and Workspace.NPC.God:FindFirstChild("Yellow")
+        teleportToTarget(godYellow)
+    end
+})
 
-                if targetCFrame and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame * CFrame.new(0, 0, -3)
-                end
-            end
-        end
-    })
-end
+TabTeleport:AddButton({
+    Name = "TP to God Green",
+    Callback = function()
+        local godGreen = Workspace:FindFirstChild("NPC") 
+                      and Workspace.NPC:FindFirstChild("God") 
+                      and Workspace.NPC.God:FindFirstChild("Green")
+        teleportToTarget(godGreen)
+    end
+})
+
+TabTeleport:AddButton({
+    Name = "TP to God Blue",
+    Callback = function()
+        local godBlue = Workspace:FindFirstChild("NPC") 
+                     and Workspace.NPC:FindFirstChild("God") 
+                     and Workspace.NPC.God:FindFirstChild("Blue")
+        teleportToTarget(godBlue)
+    end
+})
 
 TabTeleport:AddSection({ Name = "📍 Islands (เกาะต่างๆ)" })
 local IslandsList = {
@@ -320,11 +329,7 @@ task.spawn(function()
     end)
 end)
 
--- ==========================================================
--- ⚙️ ADVANCED ANTI-AFK & SYSTEM CORE
--- ==========================================================
-
--- 1. Roblox Engine Anti-AFK Hook
+-- Anti-AFK Logic
 LocalPlayer.Idled:Connect(function()
     if AntiAFK then
         VirtualUser:CaptureController()
@@ -332,22 +337,18 @@ LocalPlayer.Idled:Connect(function()
     end
 end)
 
--- 2. Micro-Movement & Keypress Loop (ป้องกันกรณี Anti-Cheat ในเกม)
 task.spawn(function()
     while true do
-        task.wait(60) -- ทำงานทุกๆ 1 นาที
+        task.wait(60)
         if AntiAFK then
             pcall(function()
                 local char = LocalPlayer.Character
                 if char and char:FindFirstChild("HumanoidRootPart") then
                     local hrp = char.HumanoidRootPart
-                    -- ขยับตัวไปข้างหน้าเล็กน้อยแล้วดึงกลับ (ไม่ส่งผลต่อตำแหน่งเดิม)
                     hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, 0.05)
                     task.wait(0.1)
                     hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, -0.05)
                 end
-                
-                -- จำลองการกดปุ่ม Spacebar
                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
                 task.wait(0.05)
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
@@ -356,7 +357,7 @@ task.spawn(function()
     end
 end)
 
--- Noclip Logic
+-- Player Utilities Logic
 RunService.Stepped:Connect(function()
     if Noclip and LocalPlayer.Character then
         for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
@@ -367,7 +368,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Infinite Jump Logic
 UserInputService.JumpRequest:Connect(function()
     if InfiniteJump and LocalPlayer.Character then
         local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -377,7 +377,6 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- ฟังก์ชันกด ToggleHotbar ช่อง 1 จำนวน 2 ครั้งเพื่อรีเซ็ตมินิเกม
 local function resetMinigameWithHotbar()
     if ToggleHotbar then
         pcall(function()
@@ -389,7 +388,13 @@ local function resetMinigameWithHotbar()
     end
 end
 
--- ดึง TextLabel และข้อความชื่อปลาจาก UI
+local function isFishingUIActive()
+    local mainGui = UIPath:FindFirstChild("MainGui")
+    if not mainGui then return false end
+    local fishing = mainGui:FindFirstChild("Fishing")
+    return fishing and fishing.Visible
+end
+
 local function getFishNameText()
     local mainGui = UIPath:FindFirstChild("MainGui")
     if not mainGui then return nil, "" end
@@ -406,7 +411,6 @@ local function getFishNameText()
     return nil, ""
 end
 
--- ตรวจสอบชื่อปลาว่าตรงกับ Target List หรือไม่
 local function checkTargetMatch(fishName)
     if not fishName or fishName == "" then return false end
     local lowerName = fishName:lower()
@@ -418,7 +422,7 @@ local function checkTargetMatch(fishName)
     return false
 end
 
--- Lock Minigame Bar
+-- Lock Minigame Bar Logic
 local allowMinigameLock = false
 
 RunService.RenderStepped:Connect(function()
@@ -453,18 +457,22 @@ end
 
 task.spawn(function()
     while true do
-        task.wait(0.5)
-        if SkillZ then useSkillSafe(Enum.KeyCode.Z, "Z") task.wait(0.1) end
-        if SkillX then useSkillSafe(Enum.KeyCode.X, "X") task.wait(0.1) end
-        if SkillC then useSkillSafe(Enum.KeyCode.C, "C") task.wait(0.1) end
-        if SkillV then useSkillSafe(Enum.KeyCode.V, "V") task.wait(0.1) end
+        task.wait(0.6)
+        if isFishingUIActive() then
+            pcall(function()
+                if SkillZ then useSkillSafe(Enum.KeyCode.Z, "Z") task.wait(0.15) end
+                if SkillX then useSkillSafe(Enum.KeyCode.X, "X") task.wait(0.15) end
+                if SkillC then useSkillSafe(Enum.KeyCode.C, "C") task.wait(0.15) end
+                if SkillV then useSkillSafe(Enum.KeyCode.V, "V") task.wait(0.15) end
+            end)
+        end
     end
 end)
 
 -- Main Fishing Loop
 task.spawn(function()
     while true do
-        task.wait(0.05)
+        task.wait(0.1)
         if AutoCast then
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
@@ -487,33 +495,38 @@ task.spawn(function()
                     timeWaited = timeWaited + 0.05
                 end
 
-                -- 3. เช็คชื่อปลา
+                -- 3. ตรวจสอบปลาที่ตกได้
                 if AutoCast and currentText ~= "" and currentText ~= "Fishing..." and currentText ~= "..." then
-                    if AutoSpecificFish then
-                        if checkTargetMatch(currentText) then
-                            -- ✅ ตรงกับลิสต์ปลา: ปล่อยให้มินิเกมทำงานและตกจนจบ
-                            allowMinigameLock = true
-                            repeat
-                                task.wait(0.1)
-                                _, currentText = getFishNameText()
-                            until currentText == "" or not AutoCast
-                        else
-                            -- ❌ ไม่ตรงลิสต์: กด ToggleHotbar 1 สลับ 2 ครั้งเพื่อยกเลิกมินิเกมทันที
-                            resetMinigameWithHotbar()
-                            task.wait(0.1)
-                            continue
-                        end
-                    else
+                    local isMatched = not AutoSpecificFish or checkTargetMatch(currentText)
+
+                    if isMatched then
                         allowMinigameLock = true
+                        local minGameTime = tick()
+                        
                         repeat
-                            task.wait(0.1)
+                            task.wait(0.15)
                             _, currentText = getFishNameText()
-                        until currentText == "" or not AutoCast
+                            
+                            local timePassed = tick() - minGameTime
+                            local uiActive = isFishingUIActive()
+                            
+                            if not uiActive and timePassed > 3.0 then
+                                task.wait(0.3)
+                                if not isFishingUIActive() then
+                                    break
+                                end
+                            end
+                        until not AutoCast
+                        
+                        allowMinigameLock = false
+                        task.wait(0.8)
+                    else
+                        resetMinigameWithHotbar()
+                        task.wait(0.3)
                     end
                 else
-                    -- กรณีเหวี่ยงวืด/ไม่ได้ปลา สั่งรีเซ็ตด้วย ToggleHotbar
                     resetMinigameWithHotbar()
-                    task.wait(0.1)
+                    task.wait(0.3)
                 end
             end
         end
