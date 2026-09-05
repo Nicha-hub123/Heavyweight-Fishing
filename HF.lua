@@ -33,7 +33,7 @@ local TargetFishList = {
     "Crimson Bonefang", "Elder Scarlet Fish", "Flying Fish Empress", "Draconic Koi",
     "Crimson Electric Eel", "Reborn Puffer Beast", "Heavenpiercer Turtle", "Sanguine Fish",
     "Frost Kingfish", "Frost Queenfish", "Verdant Alligator Gar", "Dreadmare Eel",
-    "Mirage Lanternfish", "Tigerfang Whale"
+    "Mirage Lanternfish", "Tigerfang Whale", "Mountain Dragonwhale", "Golden Dragonfish"
 }
 
 local AutoMinigame = false
