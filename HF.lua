@@ -56,10 +56,60 @@ local function getEvent(name)
     return nil
 end
 
+-- Function ตรวจสอบว่า UI มินิเกมเปิดอยู่หรือไม่
+local function isFishingUIActive()
+    local mainGui = UIPath:FindFirstChild("MainGui")
+    if not mainGui then return false end
+    local fishing = mainGui:FindFirstChild("Fishing")
+    return fishing and fishing.Visible
+end
+
+-- Function อ่านชื่อปลาบน UI
+local function getFishNameText()
+    local mainGui = UIPath:FindFirstChild("MainGui")
+    if not mainGui then return nil, "" end
+    local fishing = mainGui:FindFirstChild("Fishing")
+    if not fishing or not fishing.Visible then return nil, "" end
+    local progBar = fishing:FindFirstChild("ProgressionBar")
+    if not progBar or not progBar.Visible then return nil, "" end
+    
+    local fishLabel = progBar:FindFirstChild("FishName")
+    if fishLabel and fishLabel:IsA("TextLabel") then
+        local cleanText = fishLabel.Text:gsub("<[^>]-Calculated>", ""):gsub("<[^>]-", "")
+        return fishLabel, cleanText
+    end
+    return nil, ""
+end
+
+-- Function เช็คปลาตรงตามรายชื่อเป้าหมายหรือไม่
+local function checkTargetMatch(fishName)
+    if not fishName or fishName == "" then return false end
+    local lowerName = fishName:lower()
+    for _, target in ipairs(TargetFishList) do
+        if string.find(lowerName, target:lower(), 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Function สลับคันเบ็ดเพื่อยกเลิกมินิเกม
+local function resetMinigameWithHotbar()
+    local toggleHotbar = getEvent("ToggleHotbar")
+    if toggleHotbar then
+        pcall(function()
+            toggleHotbar:InvokeServer("1")
+            task.wait(0.12)
+            toggleHotbar:InvokeServer("1")
+            task.wait(0.15)
+        end)
+    end
+end
+
 -- Window Setup
 local Window = Fluent:CreateWindow({
-    Title = "Heavyweight Fishing | by Nicha",
-    SubTitle = "by Nicha",
+    Title = "Heavyweight Fishing | Full Features",
+    SubTitle = "by Fluent UI",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 420),
     Theme = "Dark",
@@ -80,6 +130,7 @@ local Tabs = {
 Tabs.Fishing:AddSection("🔥 Main Fishing Settings")
 Tabs.Fishing:AddToggle("AutoCast", { Title = "Auto Cast (ตกปลาอัตโนมัติ)", Default = false, Callback = function(v) AutoCast = v end })
 Tabs.Fishing:AddToggle("AutoMinigame", { Title = "Lock Minigame Bar (ล็อคเกจตกปลา)", Default = false, Callback = function(v) AutoMinigame = v end })
+
 Tabs.Fishing:AddSection("🎯 Target Fish Settings")
 Tabs.Fishing:AddToggle("AutoSpecificFish", { Title = "Auto Specific Fish (กรองปลาตามรายชื่อ)", Default = false, Callback = function(v) AutoSpecificFish = v end })
 
@@ -144,6 +195,7 @@ Tabs.Bait:AddButton({
 })
 
 -- 3. Tab Auto Skill
+Tabs.Skills:AddSection("⚡ Skill Settings")
 Tabs.Skills:AddToggle("SkillZ", { Title = "Auto Skill Z", Default = false, Callback = function(v) SkillZ = v end })
 Tabs.Skills:AddToggle("SkillX", { Title = "Auto Skill X", Default = false, Callback = function(v) SkillX = v end })
 Tabs.Skills:AddToggle("SkillC", { Title = "Auto Skill C", Default = false, Callback = function(v) SkillC = v end })
@@ -285,6 +337,53 @@ task.spawn(function()
     end)
 end)
 
+-- Lock Minigame Bar Logic
+local allowMinigameLock = false
+RunService.RenderStepped:Connect(function()
+    if AutoMinigame and allowMinigameLock and isFishingUIActive() then
+        local mainGui = UIPath:FindFirstChild("MainGui")
+        if mainGui then
+            local fishing = mainGui:FindFirstChild("Fishing")
+            if fishing and fishing.Visible then
+                local barFrame = fishing:FindFirstChild("BarFrame")
+                if barFrame then
+                    local bar = barFrame:FindFirstChild("Bar")
+                    if bar then
+                        bar.AnchorPoint = Vector2.new(0.5, 0.5)
+                        bar.Position = UDim2.new(0.5, 0, 0.5, 0)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ⚡ Auto Skill Loop (ปรับปรุงการส่งสัญญาณปุ่มกด)
+local function triggerSkill(keyCode, skillName)
+    local skillEvent = getEvent("UseSkill") or getEvent("Skill") or getEvent("ActivateSkill") or getEvent("Ability")
+    if skillEvent then
+        pcall(function() skillEvent:FireServer(skillName) end)
+    end
+    -- กดปุ่ม Keyboard ควบคู่ไปด้วย
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+        task.wait(0.03)
+        VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+    end)
+end
+
+task.spawn(function()
+    while true do
+        task.wait(0.4)
+        if isFishingUIActive() then
+            if SkillZ then triggerSkill(Enum.KeyCode.Z, "Z") task.wait(0.1) end
+            if SkillX then triggerSkill(Enum.KeyCode.X, "X") task.wait(0.1) end
+            if SkillC then triggerSkill(Enum.KeyCode.C, "C") task.wait(0.1) end
+            if SkillV then triggerSkill(Enum.KeyCode.V, "V") task.wait(0.1) end
+        end
+    end
+end)
+
 -- Background Logic Loop
 LocalPlayer.Idled:Connect(function()
     if AntiAFK then
@@ -334,19 +433,73 @@ task.spawn(function()
     end
 end)
 
--- Main Fishing Loop
+-- 🎣 Main Fishing Loop (รองรับ Auto Specific Fish + Lock Bar)
 task.spawn(function()
     while true do
         task.wait(0.1)
         if AutoCast then
             local fishingEvent = getEvent("Fishing")
             local char = LocalPlayer.Character
+            
             if fishingEvent and char and char:FindFirstChild("HumanoidRootPart") then
+                allowMinigameLock = false
+                
+                -- 1. เหวี่ยงเบ็ด
                 local castCFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, 0, -15)
                 fishingEvent:FireServer(castCFrame)
-                task.wait(1.5)
+                
+                -- 2. วนรอจนชื่อปลาขึ้นบน UI
+                local fishLabel, currentText = nil, ""
+                local timeWaited = 0
+                
+                while timeWaited < 8.0 and AutoCast do
+                    fishLabel, currentText = getFishNameText()
+                    if currentText ~= "" and currentText ~= "Fishing..." and currentText ~= "..." then
+                        break
+                    end
+                    task.wait(0.05)
+                    timeWaited = timeWaited + 0.05
+                end
+
+                -- 3. ตรวจสอบปลาที่ตกได้
+                if AutoCast and currentText ~= "" and currentText ~= "Fishing..." and currentText ~= "..." then
+                    local isMatched = not AutoSpecificFish or checkTargetMatch(currentText)
+
+                    if isMatched then
+                        -- ปลาตรงตามเป้าหมาย: เปิดมินิเกม ล็อคเกจ และรอจนตกเสร็จ
+                        allowMinigameLock = true
+                        local minGameTime = tick()
+                        
+                        repeat
+                            task.wait(0.15)
+                            _, currentText = getFishNameText()
+                            
+                            local timePassed = tick() - minGameTime
+                            local uiActive = isFishingUIActive()
+                            
+                            if not uiActive and timePassed > 2.5 then
+                                task.wait(0.3)
+                                if not isFishingUIActive() then
+                                    break
+                                end
+                            end
+                        until not AutoCast
+                        
+                        allowMinigameLock = false
+                        task.wait(0.8)
+                    else
+                        -- ปลาไม่ตรงตามรายชื่อ: ยกเลิกมินิเกมทันที
+                        resetMinigameWithHotbar()
+                        task.wait(0.3)
+                    end
+                else
+                    -- ไม่พบชื่อปลา/รอนานเกิน: รีเซ็ตแล้วเหวี่ยงใหม่
+                    resetMinigameWithHotbar()
+                    task.wait(0.3)
+                end
             end
         end
     end
 end)
+
 
