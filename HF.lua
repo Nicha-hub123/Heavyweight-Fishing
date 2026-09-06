@@ -4,9 +4,7 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
@@ -15,7 +13,7 @@ local AutoCast = false
 local AutoSpecificFish = false
 local Noclip = false
 local InfiniteJump = false
-local AntiAFK = true
+local IsCastingOrFishing = false -- 🔒 ตัวแปรป้องกันการเหวี่ยงเบ็ดซ้ำ
 
 -- 🪱 Auto Buy Bait Variables
 local AutoBuyBait = false
@@ -128,7 +126,14 @@ local Tabs = {
 
 -- 1. Tab Auto Fishing
 Tabs.Fishing:AddSection("🔥 Main Fishing Settings")
-Tabs.Fishing:AddToggle("AutoCast", { Title = "Auto Cast (ตกปลาอัตโนมัติ)", Default = false, Callback = function(v) AutoCast = v end })
+Tabs.Fishing:AddToggle("AutoCast", { 
+    Title = "Auto Cast (ตกปลาอัตโนมัติ)", 
+    Default = false, 
+    Callback = function(v) 
+        AutoCast = v 
+        if not v then IsCastingOrFishing = false end
+    end 
+})
 Tabs.Fishing:AddToggle("AutoMinigame", { Title = "Lock Minigame Bar (ล็อคเกจตกปลา)", Default = false, Callback = function(v) AutoMinigame = v end })
 
 Tabs.Fishing:AddSection("🎯 Target Fish Settings")
@@ -304,11 +309,10 @@ end
 
 -- 6. Tab Misc
 Tabs.Misc:AddSection("⚙️ Player Utilities")
-Tabs.Misc:AddToggle("AntiAFK", { Title = "Anti AFK", Default = true, Callback = function(v) AntiAFK = v end })
 Tabs.Misc:AddToggle("Noclip", { Title = "Noclip", Default = false, Callback = function(v) Noclip = v end })
 Tabs.Misc:AddToggle("InfiniteJump", { Title = "Infinite Jump", Default = false, Callback = function(v) InfiniteJump = v end })
 
--- Mobile Toggle Button (ปรับให้ไม่บังระบบจอยสติ๊กเดิน)
+-- Mobile Toggle Button
 task.spawn(function()
     task.wait(0.5)
     local targetParent = (typeof(gethui) == "function" and gethui()) or game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
@@ -337,10 +341,9 @@ task.spawn(function()
     end)
 end)
 
--- Lock Minigame Bar Logic
-local allowMinigameLock = false
+-- 🎯 Lock Minigame Bar Logic
 RunService.RenderStepped:Connect(function()
-    if AutoMinigame and allowMinigameLock and isFishingUIActive() then
+    if AutoMinigame and isFishingUIActive() then
         local mainGui = UIPath:FindFirstChild("MainGui")
         if mainGui then
             local fishing = mainGui:FindFirstChild("Fishing")
@@ -359,7 +362,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ⚡ Auto Skill Loop
-local function triggerSkill(keyCode, skillName)
+local function triggerSkill(skillName)
     local skillEvent = getEvent("UseSkill") or getEvent("Skill") or getEvent("ActivateSkill") or getEvent("Ability")
     if skillEvent then
         pcall(function() skillEvent:FireServer(skillName) end)
@@ -370,15 +373,15 @@ task.spawn(function()
     while true do
         task.wait(0.4)
         if isFishingUIActive() then
-            if SkillZ then triggerSkill(Enum.KeyCode.Z, "Z") task.wait(0.1) end
-            if SkillX then triggerSkill(Enum.KeyCode.X, "X") task.wait(0.1) end
-            if SkillC then triggerSkill(Enum.KeyCode.C, "C") task.wait(0.1) end
-            if SkillV then triggerSkill(Enum.KeyCode.V, "V") task.wait(0.1) end
+            if SkillZ then triggerSkill("Z") task.wait(0.1) end
+            if SkillX then triggerSkill("X") task.wait(0.1) end
+            if SkillC then triggerSkill("C") task.wait(0.1) end
+            if SkillV then triggerSkill("V") task.wait(0.1) end
         end
     end
 end)
 
--- Background Logic Loop (ปรับปรุง Noclip ไม่ให้ลบ CanCollide ชิ้นส่วนสำคัญ)
+-- Noclip Logic
 RunService.Stepped:Connect(function()
     if Noclip and LocalPlayer.Character then
         for _, part in ipairs(LocalPlayer.Character:GetChildren()) do
@@ -389,21 +392,13 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- 🦘 Infinite Jump (แก้ไขปุ่มกระโดดหายด้วยระบบ Velocity Safe)
+-- Infinite Jump
 UserInputService.JumpRequest:Connect(function()
     if InfiniteJump and LocalPlayer.Character then
         local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if hrp then
             hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
         end
-    end
-end)
-
--- Anti AFK
-LocalPlayer.Idled:Connect(function()
-    if AntiAFK then
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
     end
 end)
 
@@ -433,69 +428,58 @@ task.spawn(function()
     end
 end)
 
--- 🎣 Main Fishing Loop
+-- 🎣 Main Auto Cast Loop (แก้ไขปัญหาสวนเบ็ดซ้ำด้วยระบบ Debounce State)
 task.spawn(function()
     while true do
-        task.wait(0.1)
-        if AutoCast then
+        task.wait(0.2)
+        
+        if AutoCast and not IsCastingOrFishing then
             local fishingEvent = getEvent("Fishing")
             local char = LocalPlayer.Character
             
-            if fishingEvent and char and char:FindFirstChild("HumanoidRootPart") then
-                allowMinigameLock = false
+            if fishingEvent and char and char:FindFirstChild("HumanoidRootPart") and not isFishingUIActive() then
+                -- 🔒 ล็อคสถานะว่าเริ่มกระบวนการตกปลาแล้ว
+                IsCastingOrFishing = true
                 
-                -- 1. เหวี่ยงเบ็ด
+                -- 1. ส่งคำสั่งเหวี่ยงเบ็ดออกไป
                 local castCFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, 0, -15)
                 fishingEvent:FireServer(castCFrame)
                 
-                -- 2. วนรอจนชื่อปลาขึ้นบน UI
-                local fishLabel, currentText = nil, ""
+                -- 2. วนรอจนกว่า UI มินิเกมจะโผล่ขึ้นมา (ให้เวลารอสูงสุด 10 วินาที)
                 local timeWaited = 0
-                
-                while timeWaited < 8.0 and AutoCast do
-                    fishLabel, currentText = getFishNameText()
-                    if currentText ~= "" and currentText ~= "Fishing..." and currentText ~= "..." then
+                while timeWaited < 10.0 and AutoCast do
+                    if isFishingUIActive() then
                         break
                     end
-                    task.wait(0.05)
-                    timeWaited = timeWaited + 0.05
+                    task.wait(0.1)
+                    timeWaited = timeWaited + 0.1
                 end
 
-                -- 3. ตรวจสอบปลาที่ตกได้
-                if AutoCast and currentText ~= "" and currentText ~= "Fishing..." and currentText ~= "..." then
+                -- 3. ถ้านั่งรอจนมินิเกมมาแล้ว
+                if isFishingUIActive() then
+                    local _, currentText = getFishNameText()
                     local isMatched = not AutoSpecificFish or checkTargetMatch(currentText)
 
                     if isMatched then
-                        allowMinigameLock = true
-                        local minGameTime = tick()
-                        
+                        -- ตกปลาต่อจนกว่า UI มินิเกมจะหายไปเอง
                         repeat
-                            task.wait(0.15)
-                            _, currentText = getFishNameText()
-                            
-                            local timePassed = tick() - minGameTime
-                            local uiActive = isFishingUIActive()
-                            
-                            if not uiActive and timePassed > 2.5 then
-                                task.wait(0.3)
-                                if not isFishingUIActive() then
-                                    break
-                                end
-                            end
-                        until not AutoCast
-                        
-                        allowMinigameLock = false
-                        task.wait(0.8)
+                            task.wait(0.2)
+                        until not isFishingUIActive() or not AutoCast
+                        task.wait(0.8) -- หน่วงเวลาสั้นๆ หลังจบมินิเกมก่อนเริ่มรอบใหม่
                     else
+                        -- ปลาไม่ตรงรายชื่อ ยกเลิกตกปลา
                         resetMinigameWithHotbar()
-                        task.wait(0.3)
+                        task.wait(0.5)
                     end
                 else
+                    -- ถ้ารอเกิน 10 วินาทีแล้วมินิเกมยังไม่ขึ้น ให้ทำการ Reset คันเบ็ด
                     resetMinigameWithHotbar()
-                    task.wait(0.3)
+                    task.wait(0.5)
                 end
+
+                -- 🔓 ปลดล็อคสถานะ ให้พร้อมเหวี่ยงเบ็ดรอบถัดไป
+                IsCastingOrFishing = false
             end
         end
     end
 end)
-
