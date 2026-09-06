@@ -33,7 +33,7 @@ local TargetFishList = {
     "Crimson Bonefang", "Elder Scarlet Fish", "Flying Fish Empress", "Draconic Koi",
     "Crimson Electric Eel", "Reborn Puffer Beast", "Heavenpiercer Turtle", "Sanguine Fish",
     "Frost Kingfish", "Frost Queenfish", "Verdant Alligator Gar", "Dreadmare Eel",
-    "Mirage Lanternfish", "Tigerfang Whale", "Mountain Dragonwhale", "Golden Dragonfish"
+    "Mirage Lanternfish", "Tigerfang Whale"
 }
 
 local AutoMinigame = false
@@ -108,8 +108,8 @@ end
 
 -- Window Setup
 local Window = Fluent:CreateWindow({
-    Title = "Heavyweight Fishing | Full Features",
-    SubTitle = "by Fluent UI",
+    Title = "Heavyweight Fishing | by Nicha",
+    SubTitle = "by Nicha",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 420),
     Theme = "Dark",
@@ -308,7 +308,7 @@ Tabs.Misc:AddToggle("AntiAFK", { Title = "Anti AFK", Default = true, Callback = 
 Tabs.Misc:AddToggle("Noclip", { Title = "Noclip", Default = false, Callback = function(v) Noclip = v end })
 Tabs.Misc:AddToggle("InfiniteJump", { Title = "Infinite Jump", Default = false, Callback = function(v) InfiniteJump = v end })
 
--- Mobile Toggle Button
+-- Mobile Toggle Button (ปรับให้ไม่บังระบบจอยสติ๊กเดิน)
 task.spawn(function()
     task.wait(0.5)
     local targetParent = (typeof(gethui) == "function" and gethui()) or game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
@@ -318,22 +318,22 @@ task.spawn(function()
     ScreenGui.Name = "FluentMobileToggle"
     
     local ToggleButton = Instance.new("TextButton", ScreenGui)
-    ToggleButton.Size = UDim2.new(0, 55, 0, 55)
-    ToggleButton.Position = UDim2.new(0.05, 0, 0.25, 0)
+    ToggleButton.Size = UDim2.new(0, 50, 0, 50)
+    ToggleButton.Position = UDim2.new(0.02, 0, 0.4, 0)
     ToggleButton.Text = "NC"
-    ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     ToggleButton.Font = Enum.Font.FredokaOne
-    ToggleButton.TextSize = 22
+    ToggleButton.TextSize = 18
     ToggleButton.Draggable = true
 
     local UICorner = Instance.new("UICorner", ToggleButton)
-    UICorner.CornerRadius = UDim.new(0, 14)
+    UICorner.CornerRadius = UDim.new(0, 12)
 
     ToggleButton.MouseButton1Click:Connect(function()
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
-        task.wait(0.05)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+        if Window then
+            Window:Minimize()
+        end
     end)
 end)
 
@@ -358,18 +358,12 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ⚡ Auto Skill Loop (ปรับปรุงการส่งสัญญาณปุ่มกด)
+-- ⚡ Auto Skill Loop
 local function triggerSkill(keyCode, skillName)
     local skillEvent = getEvent("UseSkill") or getEvent("Skill") or getEvent("ActivateSkill") or getEvent("Ability")
     if skillEvent then
         pcall(function() skillEvent:FireServer(skillName) end)
     end
-    -- กดปุ่ม Keyboard ควบคู่ไปด้วย
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
-        task.wait(0.03)
-        VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
-    end)
 end
 
 task.spawn(function()
@@ -384,26 +378,32 @@ task.spawn(function()
     end
 end)
 
--- Background Logic Loop
-LocalPlayer.Idled:Connect(function()
-    if AntiAFK then
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
-    end
-end)
-
+-- Background Logic Loop (ปรับปรุง Noclip ไม่ให้ลบ CanCollide ชิ้นส่วนสำคัญ)
 RunService.Stepped:Connect(function()
     if Noclip and LocalPlayer.Character then
-        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
+        for _, part in ipairs(LocalPlayer.Character:GetChildren()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                part.CanCollide = false
+            end
         end
     end
 end)
 
+-- 🦘 Infinite Jump (แก้ไขปุ่มกระโดดหายด้วยระบบ Velocity Safe)
 UserInputService.JumpRequest:Connect(function()
     if InfiniteJump and LocalPlayer.Character then
-        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
+        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+        end
+    end
+end)
+
+-- Anti AFK
+LocalPlayer.Idled:Connect(function()
+    if AntiAFK then
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
     end
 end)
 
@@ -433,7 +433,7 @@ task.spawn(function()
     end
 end)
 
--- 🎣 Main Fishing Loop (รองรับ Auto Specific Fish + Lock Bar)
+-- 🎣 Main Fishing Loop
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -466,7 +466,6 @@ task.spawn(function()
                     local isMatched = not AutoSpecificFish or checkTargetMatch(currentText)
 
                     if isMatched then
-                        -- ปลาตรงตามเป้าหมาย: เปิดมินิเกม ล็อคเกจ และรอจนตกเสร็จ
                         allowMinigameLock = true
                         local minGameTime = tick()
                         
@@ -488,12 +487,10 @@ task.spawn(function()
                         allowMinigameLock = false
                         task.wait(0.8)
                     else
-                        -- ปลาไม่ตรงตามรายชื่อ: ยกเลิกมินิเกมทันที
                         resetMinigameWithHotbar()
                         task.wait(0.3)
                     end
                 else
-                    -- ไม่พบชื่อปลา/รอนานเกิน: รีเซ็ตแล้วเหวี่ยงใหม่
                     resetMinigameWithHotbar()
                     task.wait(0.3)
                 end
@@ -501,5 +498,4 @@ task.spawn(function()
         end
     end
 end)
-
 
