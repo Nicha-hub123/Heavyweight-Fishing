@@ -21,8 +21,12 @@ local SelectedBait = "Basic Bait"
 local BaitAmount = 1
 local BaitDelay = 5
 
--- 🐟 Target Fish List
-local TargetFishList = {
+-- 🐟 Target Fish Dynamic System (ระบบเลือก/ใส่ชื่อปลาตามต้องการ)
+local SelectedTargetsFromDropdown = {} -- รายชื่อปลาที่เลือกจาก Dropdown
+local CustomTargetInput = ""            -- รายชื่อปลาที่พิมพ์เพิ่มเอง
+
+-- รายชื่อปลามาตรฐานในเกม (สามารถเลือกผ่าน Multi-Dropdown ได้)
+local MasterFishList = {
     "Azure Carp", "Jiaolong Dragonfish", "Chainbound Shark", "Adult Jiaolong Dragonfish",
     "Elder Chainbound Shark", "Elder Jiaolong Dragonfish", "Trueform Jiaolongfish",
     "Trueform Perch", "Ascended Perch", "Primordial Kunfish", "Primordial Kunfish Overlord",
@@ -79,15 +83,28 @@ local function getFishNameText()
     return nil, ""
 end
 
--- Function เช็คปลาตรงตามรายชื่อเป้าหมายหรือไม่
+-- Function เช็คปลาตรงตามรายชื่อเป้าหมายหรือไม่ (รวมทั้ง Dropdown และ Custom Input)
 local function checkTargetMatch(fishName)
     if not fishName or fishName == "" then return false end
     local lowerName = fishName:lower()
-    for _, target in ipairs(TargetFishList) do
-        if string.find(lowerName, target:lower(), 1, true) then
+
+    -- 1. ตรวจสอบกับปลาที่เลือกใน Dropdown
+    for target, selected in pairs(SelectedTargetsFromDropdown) do
+        if selected and string.find(lowerName, target:lower(), 1, true) then
             return true
         end
     end
+
+    -- 2. ตรวจสอบกับปลาที่พิมพ์เพิ่มเองใน Custom Input
+    if CustomTargetInput and CustomTargetInput ~= "" then
+        for customName in string.gmatch(CustomTargetInput, "[^,]+") do
+            local cleanCustom = customName:match("^%s*(.-)%s*$"):lower()
+            if cleanCustom ~= "" and string.find(lowerName, cleanCustom, 1, true) then
+                return true
+            end
+        end
+    end
+
     return false
 end
 
@@ -137,7 +154,33 @@ Tabs.Fishing:AddToggle("AutoCast", {
 Tabs.Fishing:AddToggle("AutoMinigame", { Title = "Lock Minigame Bar (ล็อคเกจตกปลา)", Default = false, Callback = function(v) AutoMinigame = v end })
 
 Tabs.Fishing:AddSection("🎯 Target Fish Settings")
-Tabs.Fishing:AddToggle("AutoSpecificFish", { Title = "Auto Specific Fish (กรองปลาตามรายชื่อ)", Default = false, Callback = function(v) AutoSpecificFish = v end })
+Tabs.Fishing:AddToggle("AutoSpecificFish", { 
+    Title = "Auto Specific Fish (เปิดระบบกรองปลา)", 
+    Default = false, 
+    Callback = function(v) AutoSpecificFish = v end 
+})
+
+-- 🐟 Multi-Select Dropdown เลือกปลาได้หลายตัว
+Tabs.Fishing:AddDropdown("TargetFishDropdown", {
+    Title = "Select Target Fish (เลือกปลาที่ต้องการ)",
+    Values = MasterFishList,
+    Multi = true,
+    Default = {},
+    Callback = function(Value)
+        SelectedTargetsFromDropdown = Value
+    end
+})
+
+-- ✍️ Input Field สำหรับพิมพ์ชื่อปลาเพิ่มเติมเอง
+Tabs.Fishing:AddInput("CustomFishInput", {
+    Title = "Custom Fish Name (พิมพ์ชื่อปลาเพิ่มเอง)",
+    Default = "",
+    Placeholder = "เช่น Azure Carp, Dragonfish (ใส่ , คั่นหลายชื่อได้)",
+    Finished = false,
+    Callback = function(Value)
+        CustomTargetInput = Value
+    end
+})
 
 -- 2. Tab Bait & Craft
 Tabs.Bait:AddSection("🤖 Auto Buy Bait (ซื้อเหยื่ออัตโนมัติ)")
@@ -428,7 +471,7 @@ task.spawn(function()
     end
 end)
 
--- 🎣 Main Auto Cast Loop (แก้ไขปัญหาสวนเบ็ดซ้ำด้วยระบบ Debounce State)
+-- 🎣 Main Auto Cast Loop (พร้อมระบบคัดกรองปลาที่อัปเดตใหม่)
 task.spawn(function()
     while true do
         task.wait(0.2)
@@ -445,7 +488,7 @@ task.spawn(function()
                 local castCFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, 0, -15)
                 fishingEvent:FireServer(castCFrame)
                 
-                -- 2. วนรอจนกว่า UI มินิเกมจะโผล่ขึ้นมา (ให้เวลารอสูงสุด 10 วินาที)
+                -- 2. วนรอจนกว่า UI มินิเกมจะโผล่ขึ้นมา (รอสูงสุด 10 วินาที)
                 local timeWaited = 0
                 while timeWaited < 10.0 and AutoCast do
                     if isFishingUIActive() then
@@ -467,7 +510,7 @@ task.spawn(function()
                         until not isFishingUIActive() or not AutoCast
                         task.wait(0.8) -- หน่วงเวลาสั้นๆ หลังจบมินิเกมก่อนเริ่มรอบใหม่
                     else
-                        -- ปลาไม่ตรงรายชื่อ ยกเลิกตกปลา
+                        -- ปลาไม่ตรงรายชื่อ ยกเลิกตกปลาทันที
                         resetMinigameWithHotbar()
                         task.wait(0.5)
                     end
@@ -483,3 +526,4 @@ task.spawn(function()
         end
     end
 end)
+
